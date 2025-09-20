@@ -11,7 +11,6 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import List, Tuple, Optional, Dict
 
 def check_and_install_dependencies():
-    """Check if required packages are installed and install them if missing."""
     required_packages = {
         'PyPDF2': 'PyPDF2>=3.0.1',
         'pdfplumber': 'pdfplumber>=0.10.3',
@@ -74,13 +73,11 @@ class PDFProcessor:
             return None
     
     def extract_person_info_from_page(self, page) -> Dict[str, str]:
-        """Extract person name and address from page text"""
         try:
             text = page.extract_text()
             if not text:
                 return {"name": "", "address": ""}
             
-            # Extract name patterns
             name_patterns = [
                 r'Company/Applicant:\s*([^\n]+)',
                 r'Applicant:\s*([^\n]+)',
@@ -95,7 +92,6 @@ class PDFProcessor:
                     name = match.group(1).strip()
                     break
             
-            # Extract address patterns
             address_patterns = [
                 r'Property Location:\s*([^\n]+)',
                 r'Address:\s*([^\n]+)',
@@ -117,7 +113,6 @@ class PDFProcessor:
             return {"name": "", "address": ""}
     
     def process_single_pdf(self) -> Tuple[bool, int, str, List[Dict]]:
-        """Process a single PDF and return (success, pages_processed, output_dir, csv_data)"""
         csv_data = []
         try:
             with open(self.input_pdf_path, 'rb') as file:
@@ -141,7 +136,6 @@ class PDFProcessor:
                         with open(output_path, 'wb') as output_file:
                             pdf_writer.write(output_file)
                         
-                        # Add to CSV data
                         csv_data.append({
                             'filename': filename,
                             'case_number': appeal_number,
@@ -158,13 +152,11 @@ class PDFProcessor:
             return False, 0, str(self.output_dir), []
 
 def process_pdf_worker(pdf_path: str) -> Tuple[str, bool, int, str, List[Dict]]:
-    """Worker function for multiprocessing"""
     processor = PDFProcessor(pdf_path)
     success, pages, output_dir, csv_data = processor.process_single_pdf()
     return pdf_path, success, pages, output_dir, csv_data
 
 def save_progress(completed_files: List[str], failed_files: List[str], progress_file: str):
-    """Save progress to resume later if needed"""
     progress = {
         'completed': completed_files,
         'failed': failed_files,
@@ -174,7 +166,6 @@ def save_progress(completed_files: List[str], failed_files: List[str], progress_
         json.dump(progress, f, indent=2)
 
 def load_progress(progress_file: str) -> Tuple[List[str], List[str]]:
-    """Load previous progress if resuming"""
     if os.path.exists(progress_file):
         with open(progress_file, 'r') as f:
             progress = json.load(f)
@@ -182,7 +173,6 @@ def load_progress(progress_file: str) -> Tuple[List[str], List[str]]:
     return [], []
 
 def save_csv_data(all_csv_data: List[Dict], csv_filename: str = "pdf_processing_results.csv"):
-    """Save all CSV data to a file"""
     if not all_csv_data:
         return
     
@@ -197,10 +187,9 @@ def save_csv_data(all_csv_data: List[Dict], csv_filename: str = "pdf_processing_
 
 def process_pdfs_enterprise(pdf_paths: List[str], max_workers: Optional[int] = None, 
                           resume: bool = False, progress_file: str = "processing_progress.json"):
-    """Enterprise-grade PDF processing with multiprocessing and progress tracking"""
     
     if max_workers is None:
-        max_workers = min(multiprocessing.cpu_count(), 8)  # Cap at 8 to avoid memory issues
+        max_workers = min(multiprocessing.cpu_count(), 8)
     
     print(f"Processing {len(pdf_paths)} PDFs with {max_workers} workers...")
     
@@ -234,7 +223,6 @@ def process_pdfs_enterprise(pdf_paths: List[str], max_workers: Optional[int] = N
                     failed_files.append(pdf_path_result)
                     print(f"Failed: {Path(pdf_path_result).name}")
                 
-                # Save progress every 10 files
                 if len(completed_files + failed_files) % 10 == 0:
                     save_progress(completed_files, failed_files, progress_file)
                     
@@ -242,10 +230,8 @@ def process_pdfs_enterprise(pdf_paths: List[str], max_workers: Optional[int] = N
                 failed_files.append(pdf_path)
                 print(f"Exception processing {pdf_path}: {e}")
     
-    # Save CSV data
     save_csv_data(all_csv_data)
     
-    # Final progress save
     save_progress(completed_files, failed_files, progress_file)
     
     end_time = time.time()
@@ -297,7 +283,6 @@ def main():
         print("Error: No PDF files provided!")
         sys.exit(1)
     
-    # Use glob pattern if provided
     if len(sys.argv) == 2 and '*' in sys.argv[1]:
         import glob
         pdf_files = glob.glob(sys.argv[1])
